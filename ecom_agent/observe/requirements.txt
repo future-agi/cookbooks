@@ -1,0 +1,7 @@
+openai
+gradio==5.25.2
+python-dotenv
+pillow
+requests
+google-genai
+traceAI-openai
