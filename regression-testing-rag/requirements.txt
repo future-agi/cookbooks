@@ -5,3 +5,4 @@ llama-index==0.12.41
 fi-instrumentation-otel==0.1.14
 gradio==5.43.1
 pypdf==5.9.0
+ai-evaluation==0.1.8

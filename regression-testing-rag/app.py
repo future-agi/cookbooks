@@ -44,7 +44,7 @@ else:
         config="config.yaml"
     )
 
-project_version = f"{args.llm}_{args.embedding}_{args.qa_prompt}_{args.condense_prompt}"
+project_version = f"llm-{args.llm}_embedding-{args.embedding}_qa_prompt-{args.qa_prompt}_condense_prompt-{args.condense_prompt}"
 print(f"Project version: {project_version}")
 
 # ============================================================================
@@ -59,18 +59,73 @@ eval_tags = [
         type=EvalTagType.OBSERVATION_SPAN,
         value=EvalSpanKind.LLM,
         mapping={
-            "input": "llm.input_messages.0.message.content",
-            "output": "llm.output_messages.0.message.content",
-            "context": "llm.input_messages.1.message.content"
+            "input": "input.value",
+            "output": "output.value"
         },
-        custom_eval_name="factual_accuracy",
+        custom_eval_name="factual_accuracy_eval",
         model=ModelChoices.TURING_LARGE
-    )
+    ),
+    EvalTag(
+        eval_name=EvalName.CONTEXT_RELEVANCE,
+        type=EvalTagType.OBSERVATION_SPAN,
+        value=EvalSpanKind.RETRIEVER,
+        mapping={
+            "input": "input.value",
+            "context": "output.value"
+        },
+        custom_eval_name="context_relevance_eval",
+        model=ModelChoices.TURING_LARGE
+    ),
+    EvalTag(
+        eval_name=EvalName.TASK_COMPLETION,
+        type=EvalTagType.OBSERVATION_SPAN,
+        value=EvalSpanKind.LLM,
+        mapping={
+            "input": "input.value",
+            "output": "output.value"
+        },
+        custom_eval_name="task_completion_eval",
+        model=ModelChoices.TURING_LARGE
+    ),
+    EvalTag(
+        eval_name=EvalName.DETECT_HALLUCINATION,
+        type=EvalTagType.OBSERVATION_SPAN,
+        value=EvalSpanKind.LLM,
+        mapping={
+            "input": "input.value",
+            "output": "output.value"
+        },
+        custom_eval_name="detect_hallucination_eval",
+        model=ModelChoices.TURING_LARGE
+    ),
+    EvalTag(
+        eval_name=EvalName.CHUNK_ATTRIBUTION,
+        type=EvalTagType.OBSERVATION_SPAN,
+        value=EvalSpanKind.LLM,
+        mapping={
+            "context": "input.value",
+            "output": "output.value"
+        },
+        custom_eval_name="chunk_attribution_eval",
+        model=ModelChoices.TURING_LARGE
+    ),
+    EvalTag(
+        eval_name=EvalName.CHUNK_UTILIZATION,
+        type=EvalTagType.OBSERVATION_SPAN,
+        value=EvalSpanKind.LLM,
+        mapping={
+            "context": "input.value",
+            "output": "output.value"
+        },
+        custom_eval_name="chunk_utilization_eval",
+        model=ModelChoices.TURING_LARGE
+    ),
+
 ]
 
 trace_provider = register(
     project_type=ProjectType.EXPERIMENT,   
-    project_name="REGRESSION-TESTING-RAG",
+    project_name="RAG-REGRESSION-TESTING",
     project_version_name=project_version,
     eval_tags=eval_tags
 )
