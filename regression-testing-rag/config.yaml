@@ -1,0 +1,56 @@
+# LLM models configuration
+llm_models:
+  gpt4o-mini:
+    name: gpt-4o-mini
+    temperature: 0.2
+
+  gpt4o:
+    name: gpt-4o
+    temperature: 0.2
+
+  gpt4:
+    name: gpt-4
+    temperature: 0.1
+  
+  gpt35:
+    name: gpt-3.5-turbo
+    temperature: 0.3
+
+# Embedding models configuration
+embedding_models:
+  ada:
+    name: text-embedding-ada-002
+  
+  large:
+    name: text-embedding-3-large
+  
+  small:
+    name: text-embedding-3-small
+
+# QA prompt templates
+qa_prompts:
+  default:
+    system: "You are a helpful assistant that answers questions about documents."
+    user: "Question: {query_str}\nContext: {context_str}"
+  
+  detailed:
+    system: "You are a detailed research assistant that provides comprehensive answers based on the document context."
+    user: "Question: {query_str}\n\nContext information from documents:\n{context_str}\n\nProvide a detailed and accurate answer based solely on the context provided."
+  
+  concise:
+    system: "You are a concise assistant that provides brief, accurate answers based on document content."
+    user: "Question: {query_str}\nReference text: {context_str}\nAnswer the question in a concise way using only information from the reference text."
+
+# Condense prompts for chat history
+condense_prompts:
+  default:
+    system: "Given the following conversation history and a new question, rephrase the question to be a standalone question that captures all relevant context from the conversation."
+    user: "Chat History:\n{chat_history}\n\nNew Question: {query_str}\n\nStandalone Question:"
+  
+  comprehensive:
+    system: "Analyze the conversation history and the new question, then create a detailed standalone question that incorporates all relevant context."
+    user: "Previous conversation:\n{chat_history}\n\nNew user question: {query_str}\n\nReformulated standalone question:"
+  
+  simple:
+    system: "Create a simple standalone question based on the chat history and new question."
+    user: "History: {chat_history}\nQuestion: {query_str}\nStandalone question:"
