@@ -1,0 +1,651 @@
+table,question,sql,answer
+"CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    order_date DATE,
+    total_amount REAL
+);
+
+/*
+3 rows from orders table:
+order_id  order_date  total_amount
+ord_5501  2025-10-20  120500.10
+ord_5502  2025-10-18  85400.50
+ord_5503  2025-10-15  99100.00
+*/",What was our total revenue for the last two weeks?,"SELECT SUM(total_amount) FROM orders WHERE order_date >= date('now', '-14 days');","Total revenue over the last fortnight was $305,000.60."
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT,
+    category TEXT
+);
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    order_date DATE
+);
+CREATE TABLE order_items (
+    item_id TEXT PRIMARY KEY,
+    order_id TEXT,
+    product_id TEXT,
+    quantity INTEGER,
+    FOREIGN KEY(order_id) REFERENCES orders(order_id),
+    FOREIGN KEY(product_id) REFERENCES products(product_id)
+);
+
+/*
+5 rows from products:
+product_id  name                        category
+p_elec_1    Quantum-Charge Power Bank   Electronics
+p_elec_2    Noise-Cancelling Headphones Electronics
+p_app_1     All-Weather Tech Jacket     Apparel
+p_app_2     Merino Wool Socks           Apparel
+p_home_1    Smart Coffee Mug            Home Goods
+
+4 rows from orders:
+order_id    order_date
+ord_q1_1    2025-01-15
+ord_q1_2    2025-02-20
+ord_q1_3    2025-03-10
+ord_q2_1    2025-04-05
+
+6 rows from order_items:
+item_id order_id    product_id  quantity
+oi_1    ord_q1_1    p_elec_1    60
+oi_2    ord_q1_2    p_elec_2    40
+oi_3    ord_q1_1    p_app_1     50
+oi_4    ord_q1_3    p_app_2     30
+oi_5    ord_q1_2    p_home_1    30
+oi_6    ord_q2_1    p_elec_1    1000
+*/","What were our top 2 selling product categories in Q1, and what was the best-selling product within each of those categories?","WITH TopCategories AS (
+    SELECT p.category
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.product_id
+    JOIN orders o ON oi.order_id = o.order_id
+    WHERE o.order_date >= '2025-01-01' AND o.order_date < '2025-04-01'
+    GROUP BY p.category
+    ORDER BY SUM(oi.quantity) DESC
+    LIMIT 2
+), RankedProducts AS (
+    SELECT
+        p.category,
+        p.name,
+        ROW_NUMBER() OVER(PARTITION BY p.category ORDER BY SUM(oi.quantity) DESC) as rank_num
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.product_id
+    JOIN orders o ON oi.order_id = o.order_id
+    WHERE p.category IN (SELECT category FROM TopCategories)
+      AND o.order_date >= '2025-01-01' AND o.order_date < '2025-04-01'
+    GROUP BY p.category, p.name
+)
+SELECT category, name
+FROM RankedProducts
+WHERE rank_num = 1;","In Q1, our top categories were Electronics and Apparel. The best-seller in Electronics was the 'Quantum-Charge Power Bank', and the best-seller in Apparel was the 'All-Weather Tech Jacket'."
+"CREATE TABLE marketing_campaigns (
+    campaign_id TEXT PRIMARY KEY,
+    name TEXT
+);
+CREATE TABLE campaign_clicks (
+    click_id TEXT PRIMARY KEY,
+    campaign_id TEXT,
+    user_id TEXT,
+    timestamp TIMESTAMP,
+    FOREIGN KEY(campaign_id) REFERENCES marketing_campaigns(campaign_id)
+);
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    user_id TEXT,
+    total_amount REAL
+);
+
+/*
+2 rows from marketing_campaigns:
+campaign_id name
+cmp_sum25   SummerVibes
+cmp_win25   WinterWarmers
+
+6 rows from campaign_clicks:
+click_id    campaign_id user_id timestamp
+clk_01      cmp_sum25   user_A  2025-07-10 09:30:00
+clk_02      cmp_sum25   user_B  2025-07-10 10:00:00
+clk_03      cmp_sum25   user_C  2025-07-11 11:00:00
+clk_04      cmp_sum25   user_A  2025-07-12 09:00:00
+clk_05      cmp_win25   user_A  2025-12-05 14:00:00
+clk_06      cmp_win25   user_D  2025-12-06 15:30:00
+*/",Which campaign reached the most unique users?,SELECT mc.name FROM campaign_clicks cc JOIN marketing_campaigns mc ON cc.campaign_id = mc.campaign_id GROUP BY mc.name ORDER BY COUNT(DISTINCT cc.user_id) DESC LIMIT 1;,The 'SummerVibes' campaign reached the most unique users.
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT,
+    inventory_level INTEGER
+);
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    order_date DATE
+);
+CREATE TABLE order_items (
+    item_id TEXT PRIMARY KEY,
+    order_id TEXT,
+    product_id TEXT,
+    quantity INTEGER,
+    FOREIGN KEY(order_id) REFERENCES orders(order_id),
+    FOREIGN KEY(product_id) REFERENCES products(product_id)
+);
+
+/*
+4 rows from products:
+product_id  name    inventory_level
+prod_kbd    Ergonomic Keyboard  8
+prod_mon    27-inch 4K Monitor  5
+prod_pad    Wireless Charging Pad   9
+prod_mic    USB Microphone  25
+
+2 rows from orders (assuming today is 2025-11-15):
+order_id    order_date
+ord_201     2025-11-15
+ord_202     2025-11-14
+
+5 rows from order_items:
+item_id order_id    product_id  quantity
+item_A  ord_201     prod_kbd    1
+item_B  ord_201     prod_mon    1
+item_C  ord_201     prod_pad    2
+item_D  ord_202     prod_kbd    1
+item_E  ord_201     prod_mic    1
+*/",I need a list of all products with less than 10 units in stock that have been ordered at least once today.,"SELECT DISTINCT p.name FROM products p JOIN order_items oi ON p.product_id = oi.product_id JOIN orders o ON oi.order_id = o.order_id WHERE p.inventory_level < 10 AND o.order_date >= date('now', 'start of day');","The following low-stock products were ordered today: Ergonomic Keyboard, 27-inch 4K Monitor, and Wireless Charging Pad."
+"CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    customer_id TEXT,
+    order_date DATE,
+    total_amount REAL
+);
+
+/*
+3 rows from orders table:
+order_id  customer_id order_date  total_amount
+ord_101   cust_abc    2025-10-26  150.75
+ord_102   cust_xyz    2025-10-25  75.20
+ord_103   cust_abc    2025-10-24  111.55
+*/",What’s our AOV for this week?,"SELECT AVG(total_amount) FROM orders WHERE order_date >= date('now', '-7 days');",Our AOV for this week is $112.50.
+"CREATE TABLE customers (
+    customer_id TEXT PRIMARY KEY,
+    email TEXT UNIQUE,
+    signup_date DATE
+);
+
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    customer_id TEXT,
+    order_date DATE,
+    status TEXT,
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+);",How many of our customers who signed up last month have already placed an order?,"SELECT COUNT(DISTINCT o.customer_id) FROM orders o WHERE o.customer_id IN (SELECT c.customer_id FROM customers c WHERE c.signup_date >= date('now', 'start of month', '-1 month') AND c.signup_date < date('now', 'start of month'));","Out of the customers who signed up last month, 852 have already placed their first order."
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT,
+    price REAL,
+    cost_of_goods_sold REAL
+);
+
+CREATE TABLE order_items (
+    item_id TEXT PRIMARY KEY,
+    order_id TEXT,
+    product_id TEXT,
+    quantity INTEGER,
+    FOREIGN KEY(product_id) REFERENCES products(product_id)
+);",What is the gross margin percentage for the 'Home & Garden' category?,SELECT (SUM((p.price - p.cost_of_goods_sold) * oi.quantity) / SUM(p.price * oi.quantity)) * 100 FROM order_items oi JOIN products p ON oi.product_id = p.product_id WHERE p.category = 'Home & Garden';,The gross margin for the Home & Garden category is 38.5%.
+"CREATE TABLE suppliers (
+    supplier_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    country TEXT
+);
+
+CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    supplier_id TEXT,
+    category TEXT,
+    FOREIGN KEY(supplier_id) REFERENCES suppliers(supplier_id)
+);","Which countries are our top 3 suppliers from, based on the number of different products they provide us?","SELECT s.country, COUNT(p.product_id) AS product_count FROM suppliers s JOIN products p ON s.supplier_id = p.supplier_id GROUP BY s.country ORDER BY product_count DESC LIMIT 3;","Our top three supplier countries by product variety are: China (1,204 products), Vietnam (876 products), and Germany (543 products)."
+"CREATE TABLE customers (
+    customer_id TEXT PRIMARY KEY,
+    first_name TEXT,
+    last_name TEXT,
+    country TEXT
+);
+
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    customer_id TEXT,
+    order_date DATE,
+    total_amount REAL,
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+);",What was our total Q3 revenue from US customers?,SELECT SUM(o.total_amount) FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE c.country = 'USA' AND o.order_date BETWEEN '2024-07-01' AND '2024-09-30';,"Total Q3 revenue from US customers was $4,821,550.34."
+"CREATE TABLE marketing_campaigns (
+    campaign_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    start_date DATE,
+    end_date DATE
+);
+
+CREATE TABLE campaign_clicks (
+    click_id TEXT PRIMARY KEY,
+    campaign_id TEXT,
+    timestamp TIMESTAMP,
+    user_id TEXT,
+    conversion_status TEXT, -- 'converted' or 'not_converted'
+    FOREIGN KEY(campaign_id) REFERENCES marketing_campaigns(campaign_id)
+);",What's the conversion rate for our 'SpringStyle24' campaign so far?,SELECT CAST(SUM(CASE WHEN conversion_status = 'converted' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(*) FROM campaign_clicks cc JOIN marketing_campaigns mc ON cc.campaign_id = mc.campaign_id WHERE mc.name = 'SpringStyle24';,The conversion rate for the SpringStyle24 campaign is 4.7%.
+"CREATE TABLE categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    category_id INTEGER,
+    FOREIGN KEY(category_id) REFERENCES categories(id)
+);
+
+/*
+3 rows from categories table:
+id  name
+1   Electronics
+2   Outdoor Gear
+3   Home Goods
+*/
+
+/*
+3 rows from products table:
+id  name                 category_id
+101 GPS Navigator        2
+102 Camping Tent         2
+103 Smart TV             1
+*/",Which category has the most products in it?,"SELECT c.name, COUNT(p.id) as product_count FROM products p JOIN categories c ON p.category_id = c.id GROUP BY c.name ORDER BY product_count DESC LIMIT 1;",The category with the most products is 'Outdoor Gear' with 2 products.
+"CREATE TABLE transactions (
+    transaction_id TEXT PRIMARY KEY,
+    amount REAL NOT NULL,
+    transaction_date TIMESTAMP NOT NULL
+);
+
+/*
+3 rows from transactions table:
+transaction_id  amount   transaction_date
+txn_1a2b3c      150.75   2024-05-02 11:30:00
+txn_4d5e6f      88.20    2023-05-04 14:05:21
+txn_7g8h9i      210.00   2024-05-06 09:15:45
+*/",How does our total revenue from the first week of May this year compare to the same week last year?,"SELECT strftime('%Y', transaction_date) as year, SUM(amount) as total_revenue FROM transactions WHERE strftime('%m', transaction_date) = '05' AND CAST(strftime('%d', transaction_date) AS INTEGER) BETWEEN 1 AND 7 GROUP BY year HAVING year IN (strftime('%Y', 'now'), strftime('%Y', 'now', '-1 year'));","Total revenue for the first week of May was $360.75 this year, compared to $88.20 last year."
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE user_events (
+    event_id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    event_name TEXT NOT NULL,
+    product_id TEXT,
+    event_timestamp TIMESTAMP NOT NULL,
+    FOREIGN KEY(product_id) REFERENCES products(product_id)
+);
+
+/*
+1 row from products table:
+product_id  name
+prod_px1    Pro-X1 Camera
+*/
+
+/*
+4 rows from user_events table:
+event_id      user_id  event_name            product_id  event_timestamp
+evt_abc1      user_1   view_product_details  prod_px1    2024-05-21 10:01:00
+evt_abc2      user_1   read_reviews          prod_px1    2024-05-21 10:02:30
+evt_abc3      user_1   add_to_cart           prod_px1    2024-05-21 10:03:15
+evt_abc4      user_1   purchase              prod_px1    2024-05-21 10:05:00
+*/","For customers who purchased the 'Pro-X1 Camera', what were the two events they performed immediately before adding it to their cart?","WITH EventLag AS (
+    SELECT
+        event_name,
+        product_id,
+        user_id,
+        event_timestamp,
+        LAG(event_name, 2) OVER(PARTITION BY user_id ORDER BY event_timestamp) as prev_event_2,
+        LAG(event_name, 1) OVER(PARTITION BY user_id ORDER BY event_timestamp) as prev_event_1
+    FROM user_events
+)
+SELECT
+    el.prev_event_2,
+    el.prev_event_1
+FROM EventLag el
+JOIN products p ON el.product_id = p.product_id
+WHERE el.event_name = 'add_to_cart' AND p.name = 'Pro-X1 Camera'
+GROUP BY el.prev_event_2, el.prev_event_1
+ORDER BY COUNT(*) DESC
+LIMIT 1;","The most common events before adding the 'Pro-X1 Camera' to the cart are: 1. `view_product_details`, followed by 2. `read_reviews`."
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT,
+    inventory_level INTEGER NOT NULL
+);
+
+/*
+3 rows from products table:
+product_id   name          color        inventory_level
+prod_sm001   SmartMug      Black        150
+prod_sm002   SmartMug      White        200
+prod_bt001   BottlePro     Steel        85
+*/",Are there any 'SmartMug' products available in 'Royal Blue'?,SELECT inventory_level FROM products WHERE name = 'SmartMug' AND color = 'Royal Blue';,We do not currently have any 'SmartMug' products available in the 'Royal Blue' color.
+"CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    shipping_address TEXT NOT NULL,
+    order_date DATE NOT NULL
+);
+
+/*
+3 rows from orders table:
+order_id  customer_id  shipping_address             order_date
+95135     cust_789     ul. Słoneczna 8, Warszawa    2024-10-21
+95136     cust_123     Rynek Główny 25, Kraków      2024-10-21
+95138     cust_456     ul. Słoneczna 8, Warszawa    2024-10-21
+*/",Show me any orders placed today that share a shipping address but belong to different customer accounts.,"SELECT o1.order_id, o2.order_id, o1.shipping_address FROM orders o1 JOIN orders o2 ON o1.shipping_address = o2.shipping_address AND o1.order_date = o2.order_date WHERE o1.customer_id <> o2.customer_id AND o1.order_id < o2.order_id AND o1.order_date = CURRENT_DATE;","Potential fraud detected: Order IDs 95135 and 95138 were shipped to 'ul. Słoneczna 8, Warszawa' today under different customer accounts."
+"CREATE TABLE users (
+    user_id TEXT PRIMARY KEY,
+    country TEXT,
+    registration_date DATE
+);
+
+CREATE TABLE campaign_events (
+    event_id TEXT PRIMARY KEY,
+    user_id TEXT,
+    campaign_id TEXT,
+    event_type TEXT, -- e.g., 'impression', 'click', 'conversion'
+    event_timestamp TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(user_id)
+);
+
+/*
+3 rows from campaign_events table:
+event_id    user_id     campaign_id     event_type      event_timestamp
+evt_abc1    user_za01   WinterWarmth    impression      2024-06-10 09:00:00
+evt_abc2    user_uk02   SummerSale      impression      2024-06-10 09:05:00
+evt_abc3    user_za01   WinterWarmth    click           2024-06-10 09:06:00
+*/",How many unique people in South Africa saw the 'WinterWarmth' campaign?,SELECT COUNT(DISTINCT u.user_id) FROM users u JOIN campaign_events ce ON u.user_id = ce.user_id WHERE u.country = 'South Africa' AND ce.campaign_id = 'WinterWarmth' AND ce.event_type = 'impression';,"The 'WinterWarmth' campaign reached 45,109 unique users in South Africa."
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT,
+    category TEXT
+);
+
+CREATE TABLE sales (
+    sale_id TEXT PRIMARY KEY,
+    product_id TEXT,
+    sale_date TIMESTAMP,
+    quantity INTEGER,
+    revenue DECIMAL(10, 2),
+    FOREIGN KEY(product_id) REFERENCES products(product_id)
+);
+
+/*
+3 rows from sales table:
+sale_id     product_id  sale_date           quantity    revenue
+sale_xyz01  prod_hg01   2024-04-12 10:30:00 1           150.00
+sale_xyz02  prod_el02   2024-05-02 14:00:00 2           800.00
+sale_xyz03  prod_hg01   2024-05-15 11:00:00 1           145.00
+*/","For each product category, show me the month-over-month revenue growth rate. I need to know which category had the worst drop last month.","WITH MonthlySales AS (
+    SELECT 
+        p.category, 
+        strftime('%Y-%m', s.sale_date) AS sale_month, 
+        SUM(s.revenue) AS total_revenue 
+    FROM sales s 
+    JOIN products p ON s.product_id = p.product_id 
+    GROUP BY 1, 2
+), 
+LaggedSales AS (
+    SELECT 
+        category, 
+        sale_month, 
+        total_revenue, 
+        LAG(total_revenue, 1, 0) OVER (PARTITION BY category ORDER BY sale_month) AS previous_month_revenue
+    FROM MonthlySales
+)
+SELECT 
+    category, 
+    ((total_revenue - previous_month_revenue) * 100.0 / previous_month_revenue) AS growth_rate 
+FROM LaggedSales 
+WHERE sale_month = strftime('%Y-%m', 'now', '-1 month')
+ORDER BY growth_rate ASC 
+LIMIT 1;","The worst-performing category last month was 'Home & Garden', with a revenue drop of 22.5%."
+"CREATE TABLE customers (
+    customer_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    join_date DATE
+);
+
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    customer_id TEXT,
+    order_date DATE,
+    order_value DECIMAL(10, 2),
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+);
+
+/*
+3 rows from customers table:
+customer_id name            join_date
+cust_acme   Acme Corp       2022-01-10
+cust_gtech  Global Tech     2021-11-05
+cust_initech Initech Inc.   2023-03-20
+*/",Find all customers who have an average order value higher than the overall average order value across all customers.,"SELECT c.name, AVG(o.order_value) as avg_val FROM customers c JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.name HAVING AVG(o.order_value) > (SELECT AVG(order_value) FROM orders);",The customers with an average order value above the overall average are 'Acme Corp' ($550.75) and 'Global Tech' ($512.40).
+"CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    customer_id TEXT,
+    order_date DATE,
+    shipping_method TEXT
+);
+
+CREATE TABLE order_items (
+    item_id TEXT PRIMARY KEY,
+    order_id TEXT,
+    product_id TEXT,
+    quantity INTEGER,
+    price DECIMAL(10, 2),
+    FOREIGN KEY(order_id) REFERENCES orders(order_id)
+);
+
+/*
+3 rows from orders table:
+order_id    customer_id order_date    shipping_method
+ord_1001    cust_552    2024-05-15    Standard
+ord_1002    cust_871    2024-05-18    Express
+ord_1003    cust_552    2024-05-21    Overnight
+*/",What was the total revenue for each shipping method last month?,"SELECT o.shipping_method, SUM(oi.quantity * oi.price) AS total_revenue FROM orders o JOIN order_items oi ON o.order_id = oi.order_id WHERE strftime('%Y-%m', o.order_date) = strftime('%Y-%m', 'now', '-1 month') GROUP BY o.shipping_method;","Last month, 'Standard' generated $215,300, 'Express' generated $88,150, and 'Overnight' generated $32,400 in revenue."
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT,
+    price DECIMAL(10, 2),
+    inventory_level INTEGER
+);
+
+/*
+3 rows from products table:
+product_id  name                    category        price   inventory_level
+prod_lw001  Classic Leather Wallet  Accessories     75.00   152
+prod_ts002  Silk Tie                Accessories     45.50   210
+prod_bg003  Canvas Messenger Bag    Bags            120.00  88
+*/","Hi, sorry to bother you, but could you please tell me what the inventory level is for the 'Classic Leather Wallet'?",SELECT inventory_level FROM products WHERE name = 'Classic Leather Wallet';,The current inventory for the 'Classic Leather Wallet' is 152 units.
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    price FLOAT NOT NULL,
+    stock_quantity INTEGER
+);
+
+/*
+3 rows from products table:
+product_id  name    price
+prod_a1b2c3   'MechanoKey Pro Wireless Keyboard' 79.99
+prod_d4e5f6   'The Art of SQL: A Promotional E-book'    0.0
+prod_g7h8i9   'Gourmet Coffee Roasters - Free Sample Pack'  0.0
+*/",List all products that have a price of zero.,"SELECT name, product_id FROM products WHERE price = 0.0;",The products with a price of zero are 'The Art of SQL: A Promotional E-book' and 'Gourmet Coffee Roasters - Free Sample Pack'.
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    product_name TEXT,
+    category TEXT
+);
+
+CREATE TABLE returns (
+    return_id TEXT PRIMARY KEY,
+    product_id TEXT,
+    return_date DATE,
+    return_value DECIMAL(10, 2),
+    FOREIGN KEY(product_id) REFERENCES products(product_id)
+);
+
+/* Sample return: ('ret_xyz', 'prod_123', '2023-10-25', 650.00) */","Can you summarize our recent, high-value returns in the electronics category?","SELECT COUNT(r.return_id), SUM(r.return_value)
+FROM returns r
+JOIN products p ON r.product_id = p.product_id
+WHERE p.category = 'Electronics'
+  AND r.return_date >= date('now', '-30 days')
+  AND r.return_value > 500.00;","Certainly. In the last 30 days, there have been 3 returns over $500 in electronics, for a total value of $2,150.00."
+"CREATE TABLE customers (
+    customer_id TEXT PRIMARY KEY,
+    first_name TEXT,
+    last_name TEXT,
+    email TEXT NOT NULL UNIQUE,
+    signup_date DATE
+);
+
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    customer_id TEXT,
+    order_date TIMESTAMP,
+    total_amount DECIMAL(10, 2),
+    FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+);",Can I get a list of all customers who have never placed an order?,SELECT c.email FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id WHERE o.order_id IS NULL;,"Certainly. The list includes 457 customers who have never placed an order. A few examples are sarah.jones@emailprovider.com, b.miller88@mymail.org, and contact@kevinlee.dev."
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    product_name TEXT,
+    brand_name TEXT,
+    category TEXT /* e.g., 'Footwear', 'footwear', 'shoes' */
+);
+
+CREATE TABLE order_items (
+    item_id TEXT PRIMARY KEY,
+    order_id TEXT,
+    product_id TEXT,
+    quantity INTEGER
+);
+
+/* Note: product_id in order_items corresponds to product_id in products */",Which brand sold the most items in the footwear category?,"SELECT p.brand_name
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+WHERE LOWER(p.category) IN ('footwear', 'shoes')
+GROUP BY p.brand_name
+ORDER BY SUM(oi.quantity) DESC
+LIMIT 1;",The brand that sold the most items in the footwear category was 'Trailblazer Footwear'.
+"CREATE TABLE suppliers (
+    supplier_id TEXT PRIMARY KEY,
+    supplier_name TEXT NOT NULL
+);
+
+CREATE TABLE returns (
+    return_id TEXT PRIMARY KEY,
+    supplier_id TEXT,
+    return_value DECIMAL(10, 2),
+    FOREIGN KEY(supplier_id) REFERENCES suppliers(supplier_id)
+);
+
+/*
+Note: The returns table may not contain entries for every supplier.
+Some suppliers might have zero returns recorded.
+*/",What is the average value per return for each supplier?,"SELECT s.supplier_name, SUM(r.return_value) / NULLIF(COUNT(r.return_id), 0) AS average_return_value
+FROM suppliers s
+LEFT JOIN returns r ON s.supplier_id = r.supplier_id
+GROUP BY s.supplier_name;","For the supplier 'Apex Electronics', the average return value is $45.82. The average return value for 'The Woven Trail' is not available as there have been no returns recorded for them."
+"CREATE TABLE registrations (
+    registration_id TEXT PRIMARY KEY,
+    attendee_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    registration_time TIMESTAMP NOT NULL,
+    ticket_type TEXT NOT NULL -- e.g., 'General', 'VIP', 'Press'
+);
+
+/*
+3 rows from registrations table:
+registration_id attendee_name   registration_time   ticket_type
+REG-98765       Jane Doe        2024-10-26 09:15:30 VIP
+REG-98766       John Smith      2024-10-25 18:05:11 General
+REG-98767       Emily White     2024-10-26 11:45:00 VIP
+*/",How many ppl registered for the VIP ticket today?,SELECT COUNT(registration_id) FROM registrations WHERE ticket_type = 'VIP' AND DATE(registration_time) = DATE('now');,17 people registered for a VIP ticket today.
+"CREATE TABLE products (
+    product_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT,
+    supplier TEXT,
+    stock_quantity INTEGER NOT NULL
+);
+
+/*
+3 rows from products table:
+product_id  name                        stock_quantity
+PROD-001    Ergonomic Keyboard - Model X  0
+PROD-002    27-inch 4K Monitor            55
+PROD-003    15-inch Laptop Sleeve         0
+*/",show me all products with zero stock,SELECT name FROM products WHERE stock_quantity = 0;,The products with zero stock are: 'Ergonomic Keyboard - Model X' and '15-inch Laptop Sleeve'.
+"CREATE TABLE posts (
+    post_id TEXT PRIMARY KEY,
+    campaign_id TEXT,
+    post_text TEXT,
+    likes INTEGER,
+    comments INTEGER,
+    shares INTEGER,
+    FOREIGN KEY(campaign_id) REFERENCES campaigns(campaign_id)
+);
+
+CREATE TABLE campaigns (
+    campaign_id TEXT PRIMARY KEY,
+    campaign_name TEXT
+);
+
+/* 
+campaign_name values in the campaigns table have inconsistent casing, e.g., 'SummerSale', 'summersale', 'Summer Sale 24' 
+*/",Which post from the summer sale campaign got top engagement?,SELECT p.post_id FROM posts p JOIN campaigns c ON p.campaign_id = c.campaign_id WHERE LOWER(c.campaign_name) LIKE '%summer%sale%' ORDER BY (p.likes + p.comments + p.shares) DESC LIMIT 1;,"The post with the highest engagement from the summer sale campaign was 'Post ID #P9871' with a total of 15,432 interactions."
+"CREATE TABLE invoices (
+    invoice_id TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    issue_date DATE,
+    due_date DATE,
+    total_amount FLOAT NOT NULL,
+    payment_status TEXT NOT NULL -- e.g., 'Paid', 'Unpaid', 'Overdue'
+);
+
+/*
+3 rows from invoices table:
+invoice_id  customer_id total_amount  payment_status
+INV-2024-001 CUST-A543    1500.75       Paid
+INV-2024-002 CUST-B987    850.00        Unpaid
+INV-2024-003 CUST-A543    250.25        Paid
+*/",Please list all paid invoices with a negative total amount.,"SELECT invoice_id, total_amount FROM invoices WHERE payment_status = 'Paid' AND total_amount < 0;",There are no paid invoices with a negative total amount.
+"CREATE TABLE users (
+    user_id TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    created_at TIMESTAMP,
+    last_login_date TIMESTAMP NULL
+);
+
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY,
+    user_id TEXT,
+    order_date TIMESTAMP,
+    total_amount FLOAT,
+    FOREIGN KEY(user_id) REFERENCES users(user_id)
+);
+
+/*
+3 rows from users table:
+user_id     email                   created_at          last_login_date
+usr_1a2b3c  alex@startup.de         2024-01-15 10:00:00 2024-05-10 12:30:00
+usr_4d5e6f  max@anotherco.com       2023-11-20 09:00:00 NULL
+usr_7g8h9i  sara.k@web.de           2024-03-01 18:45:00 2024-03-02 11:00:00
+*/",how many users havnt logged in recently but have placed an order?,"SELECT COUNT(DISTINCT u.user_id) FROM users u JOIN orders o ON u.user_id = o.user_id WHERE (u.last_login_date IS NULL OR u.last_login_date < date('now', '-90 days'));",There are 112 users who have placed an order but have not logged in within the last 90 days.
