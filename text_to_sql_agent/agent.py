@@ -4,8 +4,8 @@ import time
 from langchain_openai import ChatOpenAI
 from langchain_community.agent_toolkits import create_sql_agent
 
-from .database import DatabaseManager
-from .prompts import get_text2sql_prompt
+from database import DatabaseManager
+from prompts import get_text2sql_prompt
 
 
 class TextToSQLAgent:
@@ -14,9 +14,23 @@ class TextToSQLAgent:
     def __init__(self,
                  db_uri=None,
                  model_name="gpt-4o-mini",
-                 complexity="default"):
+                 complexity="basic"):
+        """
+        Initialize the TextToSQLAgent.
+        
+        Args:
+            db_uri (str, optional): Database URI. Defaults to None (in-memory SQLite).
+            model_name (str, optional): OpenAI model name. Defaults to "gpt-4o-mini".
+            complexity (str, optional): Prompt variation to use. Options include:
+                - "basic": Simple SQL query generation
+                - "advanced": Optimized queries with best practices
+                - "verbose": Queries with explanatory comments
+                - "analytical": Queries using advanced analytical functions
+                - "explanation": For explaining existing SQL queries
+        """
         self.llm = ChatOpenAI(model_name=model_name, temperature=0)
         self.db_manager = DatabaseManager(db_uri)
+        self.prompt_variation = complexity
         self.prompt = get_text2sql_prompt(complexity)
         self.agent_executor = None
 
@@ -33,12 +47,25 @@ class TextToSQLAgent:
 
         return self.agent_executor
 
-    def query(self, question):
-        """Executes a natural language query against the database and returns the result."""
+    def query(self, question, prompt_variation=None):
+        """
+        Executes a natural language query against the database and returns the result.
+        
+        Args:
+            question (str): The natural language question to convert to SQL
+            prompt_variation (str, optional): Override the default prompt variation.
+                                             If provided, this will be used instead of the one set during initialization.
+        """
         start_time = time.time()
         try:
             if self.agent_executor is None:
                 self.create_sql_agent()
+                
+            # Use the provided prompt variation if specified, otherwise use the default one
+            if prompt_variation and prompt_variation != self.prompt_variation:
+                self.prompt = get_text2sql_prompt(prompt_variation)
+                self.prompt_variation = prompt_variation
+                
             agent_result = self.agent_executor.invoke({"input": question})
 
             end_time = time.time()
@@ -53,7 +80,8 @@ class TextToSQLAgent:
                 "execution_success": True,
                 "result": agent_result["output"],
                 "error": "",
-                "latency": latency
+                "latency": latency,
+                "prompt_variation": self.prompt_variation
             }
 
         except (ValueError, KeyError) as e:
@@ -65,7 +93,8 @@ class TextToSQLAgent:
                 "execution_success": False,
                 "result": "",
                 "error": error_msg,
-                "latency": time.time() - start_time
+                "latency": time.time() - start_time,
+                "prompt_variation": self.prompt_variation
             }
         except AttributeError as e:
             error_msg = f"Missing attribute error: {str(e)}"
@@ -75,7 +104,8 @@ class TextToSQLAgent:
                 "execution_success": False,
                 "result": "",
                 "error": error_msg,
-                "latency": time.time() - start_time
+                "latency": time.time() - start_time,
+                "prompt_variation": self.prompt_variation
             }
 
     def _extract_sql_from_steps(self, steps):
@@ -102,3 +132,35 @@ class TextToSQLAgent:
     def get_schema_description(self):
         """Returns the database schema description."""
         return self.db_manager.get_schema_description()
+        
+    def set_prompt_variation(self, variation):
+        """
+        Sets the prompt variation to use for subsequent queries.
+        
+        Args:
+            variation (str): The prompt variation to use. Options include:
+                - "basic": Simple SQL query generation
+                - "advanced": Optimized queries with best practices
+                - "verbose": Queries with explanatory comments
+                - "analytical": Queries using advanced analytical functions
+                - "explanation": For explaining existing SQL queries
+                
+        Returns:
+            bool: True if successful, False if the variation is not available
+        """
+        if variation in ["basic", "advanced", "verbose", "analytical", "explanation"]:
+            self.prompt = get_text2sql_prompt(variation)
+            self.prompt_variation = variation
+            return True
+        else:
+            print(f"Warning: Variation '{variation}' is not available. Using current variation '{self.prompt_variation}'.")
+            return False
+            
+    def get_available_prompt_variations(self):
+        """
+        Returns a list of available prompt variations.
+        
+        Returns:
+            list: List of available prompt variation names
+        """
+        return ["basic", "advanced", "verbose", "analytical", "explanation"]
