@@ -1,5 +1,8 @@
 import asyncio
+import audioop
+import base64
 import contextlib
+import json
 import os
 from pathlib import Path
 from typing import AsyncIterator
@@ -7,9 +10,36 @@ from uuid import uuid4
 
 import uvicorn
 from dotenv import load_dotenv
+
+load_dotenv()
+
+from fi_instrumentation import register, using_prompt_template, using_session, using_user
+from fi_instrumentation.fi_types import ProjectType
+from fi.prompt import Prompt
+from traceai_langchain import LangChainInstrumentor
+
+trace_provider = register(
+    project_type=ProjectType.OBSERVE,
+    project_name="voice-sandwich-demo",
+)
+LangChainInstrumentor().instrument(tracer_provider=trace_provider)
+
+# Fetch system prompt from FutureAGI Prompt Workbench
+PROMPT_TEMPLATE_NAME = "sandwich-shop-assistant"
+PROMPT_TEMPLATE_LABEL = "Production"
+PROMPT_TEMPLATE_VERSION = ""
+try:
+    prompt_client = Prompt.get_template_by_name(
+        PROMPT_TEMPLATE_NAME, label=PROMPT_TEMPLATE_LABEL
+    )
+    compiled_messages = prompt_client.compile()
+    system_prompt = compiled_messages[0].get("content", "")
+    PROMPT_TEMPLATE_VERSION = getattr(prompt_client.template, "version", "")
+except Exception:
+    system_prompt = None
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from langchain.agents import create_agent
+from langgraph.prebuilt import create_react_agent
 from langchain.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_aws import ChatBedrockConverse
 from langchain_core.runnables import RunnableGenerator
@@ -27,8 +57,6 @@ from events import (
     event_to_dict,
 )
 from utils import merge_async_iters
-
-load_dotenv()
 
 # Static files are served from the shared web build output
 STATIC_DIR = Path(__file__).parent.parent.parent / "web" / "dist"
@@ -60,7 +88,7 @@ def confirm_order(order_summary: str) -> str:
     return f"Order confirmed: {order_summary}. Sending to kitchen."
 
 
-system_prompt = """
+FALLBACK_SYSTEM_PROMPT = """
 You are a helpful sandwich shop assistant. Your goal is to take the user's order.
 Be concise and friendly.
 
@@ -70,15 +98,18 @@ Available cheeses: swiss, cheddar, provolone.
 
 """
 
+if not system_prompt:
+    system_prompt = FALLBACK_SYSTEM_PROMPT
+
 bedrock_model = ChatBedrockConverse(
-    model="us.anthropic.claude-3-5-haiku-20241022-v1:0",
-    region_name=os.getenv("AWS_BEDROCK_REGION", "us-west-2"),
+    model="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    region_name="us-east-1",
 )
 
-agent = create_agent(
+agent = create_react_agent(
     model=bedrock_model,
     tools=[add_to_order, confirm_order],
-    system_prompt=system_prompt,
+    prompt=system_prompt,
     checkpointer=InMemorySaver(),
 )
 
@@ -256,12 +287,18 @@ async def _tts_stream(
         async for event in event_stream:
             # Pass through all events to downstream consumers
             yield event
-            # Buffer agent text chunks
+            # Buffer agent text chunks, flush on sentence boundaries
             if event.type == "agent_chunk":
                 buffer.append(event.text)
-            # Send all buffered text to Cartesia when agent finishes
+                text_so_far = "".join(buffer)
+                if any(text_so_far.rstrip().endswith(p) for p in (".", "!", "?", ":")):
+                    await tts.send_text(text_so_far)
+                    buffer = []
+            # Flush any remaining text when agent finishes
             if event.type == "agent_end":
-                await tts.send_text("".join(buffer))
+                remaining = "".join(buffer).strip()
+                if remaining:
+                    await tts.send_text(remaining)
                 buffer = []
 
     try:
@@ -285,17 +322,75 @@ pipeline = (
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
+    session_id = str(uuid4())
+    user_id = websocket.query_params.get("user_id", "anonymous")
+
     async def websocket_audio_stream() -> AsyncIterator[bytes]:
         """Async generator that yields audio bytes from the websocket."""
         while True:
             data = await websocket.receive_bytes()
             yield data
 
-    output_stream = pipeline.atransform(websocket_audio_stream())
+    with (
+        using_session(session_id),
+        using_user(user_id),
+        using_prompt_template(
+            template=system_prompt,
+            label=PROMPT_TEMPLATE_LABEL,
+            version=PROMPT_TEMPLATE_VERSION,
+        ),
+    ):
+        output_stream = pipeline.atransform(websocket_audio_stream())
 
-    # Process all events from the pipeline, sending events back to the client
-    async for event in output_stream:
-        await websocket.send_json(event_to_dict(event))
+        # Process all events from the pipeline, sending events back to the client
+        async for event in output_stream:
+            await websocket.send_json(event_to_dict(event))
+
+
+@app.websocket("/ws/twilio")
+async def twilio_websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    session_id = str(uuid4())
+    stream_sid = None
+
+    async def twilio_audio_stream() -> AsyncIterator[bytes]:
+        """Decode Twilio mulaw base64 media into PCM bytes."""
+        while True:
+            raw = await websocket.receive_text()
+            msg = json.loads(raw)
+            if msg.get("event") == "media":
+                mulaw_bytes = base64.b64decode(msg["media"]["payload"])
+                pcm_bytes = audioop.ulaw2lin(mulaw_bytes, 2)
+                yield pcm_bytes
+            elif msg.get("event") == "start":
+                nonlocal stream_sid
+                stream_sid = msg["start"].get("streamSid")
+            elif msg.get("event") == "stop":
+                return
+
+    with (
+        using_session(session_id),
+        using_user("twilio-caller"),
+        using_prompt_template(
+            template=system_prompt,
+            label=PROMPT_TEMPLATE_LABEL,
+            version=PROMPT_TEMPLATE_VERSION,
+        ),
+    ):
+        output_stream = pipeline.atransform(twilio_audio_stream())
+
+        async for event in output_stream:
+            if event.type == "tts_chunk" and stream_sid:
+                # TTS outputs 24kHz PCM16 mono, Twilio expects 8kHz mulaw
+                pcm_8k = audioop.ratecv(event.audio, 2, 1, 24000, 8000, None)[0]
+                mulaw_bytes = audioop.lin2ulaw(pcm_8k, 2)
+                payload = base64.b64encode(mulaw_bytes).decode("ascii")
+                await websocket.send_text(json.dumps({
+                    "event": "media",
+                    "streamSid": stream_sid,
+                    "media": {"payload": payload},
+                }))
 
 
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
