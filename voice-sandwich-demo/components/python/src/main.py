@@ -34,8 +34,12 @@ try:
     prompt_client = Prompt.get_template_by_name(
         PROMPT_TEMPLATE_NAME, label=PROMPT_TEMPLATE_LABEL
     )
-    compiled_messages = prompt_client.compile()
-    system_prompt = compiled_messages[0].get("content", "")
+    # Access template messages directly — .compile() stringifies the content list
+    content_blocks = prompt_client.template.messages[0].content
+    if isinstance(content_blocks, list):
+        system_prompt = "\n".join(b["text"] for b in content_blocks if "text" in b).strip()
+    else:
+        system_prompt = str(content_blocks).strip()
     PROMPT_TEMPLATE_VERSION = getattr(prompt_client.template, "version", "")
 except Exception:
     system_prompt = None
