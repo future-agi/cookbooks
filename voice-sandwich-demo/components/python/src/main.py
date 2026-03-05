@@ -14,8 +14,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fi_instrumentation import register, using_prompt_template, using_session, using_user
-from fi_instrumentation.fi_types import ProjectType
+from fi_instrumentation.fi_types import ProjectType, FiSpanKindValues, SpanAttributes
 from fi.prompt import Prompt
+from opentelemetry import trace
 from traceai_langchain import LangChainInstrumentor
 
 trace_provider = register(
@@ -23,6 +24,7 @@ trace_provider = register(
     project_name="voice-sandwich-demo",
 )
 LangChainInstrumentor().instrument(tracer_provider=trace_provider)
+tracer = trace.get_tracer(__name__)
 
 # Fetch system prompt from FutureAGI Prompt Workbench
 PROMPT_TEMPLATE_NAME = "sandwich-shop-assistant"
@@ -37,12 +39,12 @@ try:
     PROMPT_TEMPLATE_VERSION = getattr(prompt_client.template, "version", "")
 except Exception:
     system_prompt = None
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from langgraph.prebuilt import create_react_agent
+from fastapi.responses import Response
+from langchain.agents import create_agent
 from langchain.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_aws import ChatBedrockConverse
-from langchain_core.runnables import RunnableGenerator
 from langgraph.checkpoint.memory import InMemorySaver
 from starlette.staticfiles import StaticFiles
 
@@ -60,12 +62,6 @@ from utils import merge_async_iters
 
 # Static files are served from the shared web build output
 STATIC_DIR = Path(__file__).parent.parent.parent / "web" / "dist"
-
-if not STATIC_DIR.exists():
-    raise RuntimeError(
-        f"Web build not found at {STATIC_DIR}. "
-        "Run 'make build-web' or 'make dev-py' from the project root."
-    )
 
 app = FastAPI()
 
@@ -88,14 +84,33 @@ def confirm_order(order_summary: str) -> str:
     return f"Order confirmed: {order_summary}. Sending to kitchen."
 
 
-FALLBACK_SYSTEM_PROMPT = """
-You are a helpful sandwich shop assistant. Your goal is to take the user's order.
-Be concise and friendly.
+FALLBACK_SYSTEM_PROMPT = """\
+You are a friendly sandwich shop voice assistant taking orders over the phone.
 
-Available toppings: lettuce, tomato, onion, pickles, mayo, mustard.
-Available meats: turkey, ham, roast beef.
-Available cheeses: swiss, cheddar, provolone.
+## Voice Rules
+- Keep responses SHORT (1-2 sentences max). This is a phone call, not a chat.
+- Never say "I didn't catch that" or ask the user to repeat. Instead, make your best guess from context and confirm it.
+- Speak naturally like a real person. Use contractions (I'll, we've, what'd).
+- Don't list all options at once. Guide the customer step by step.
+- If the transcript seems garbled, infer intent from keywords and context.
 
+## Order Flow
+1. Greet briefly: "Hey! What can I get for you today?"
+2. Ask for bread choice (white, wheat, Italian, wrap)
+3. Ask for meat (turkey, ham, roast beef) — or veggie
+4. Ask for cheese (swiss, cheddar, provolone) — or none
+5. Ask for toppings (lettuce, tomato, onion, pickles)
+6. Ask for sauce (mayo, mustard, oil & vinegar) — or none
+7. Confirm the full order, then use the confirm_order tool
+
+## Tools
+- Use add_to_order whenever the customer picks an item.
+- Use confirm_order once the full sandwich is confirmed.
+
+## Handling Unclear Input
+- If someone says something unclear like "hamchz" → assume "ham and cheese" and confirm: "Ham and cheese, got it! What bread?"
+- If you hear a number, treat it as quantity.
+- Always keep the conversation moving forward. Don't stall.
 """
 
 if not system_prompt:
@@ -106,10 +121,10 @@ bedrock_model = ChatBedrockConverse(
     region_name="us-east-1",
 )
 
-agent = create_react_agent(
+agent = create_agent(
     model=bedrock_model,
     tools=[add_to_order, confirm_order],
-    prompt=system_prompt,
+    system_prompt=system_prompt,
     checkpointer=InMemorySaver(),
 )
 
@@ -164,6 +179,11 @@ async def _stt_stream(
         # from AssemblyAI. The receive_events() method listens on the WebSocket
         # for transcript events and yields them as they become available.
         async for event in stt.receive_events():
+            if event.type == "stt_output":
+                with tracer.start_as_current_span("stt") as span:
+                    span.set_attribute("fi.span.kind", FiSpanKindValues.TOOL)
+                    span.set_attribute("audio.transcript", event.transcript)
+                    span.set_attribute("tool.name", "speech-to-text")
             yield event
     finally:
         # Cleanup: ensure the background task is cancelled and awaited
@@ -218,11 +238,16 @@ async def _agent_stream(
 
             # Iterate through the agent's streaming response. The stream yields
             # tuples of (message, metadata), but we only need the message.
+            prev_text_len = 0
             async for message, metadata in stream:
                 # Emit agent chunks (AI messages)
                 if isinstance(message, AIMessage):
-                    # Extract and yield the text content from each message chunk
-                    yield AgentChunkEvent.create(message.text)
+                    # Extract only the NEW text delta from each chunk
+                    full_text = message.text
+                    delta = full_text[prev_text_len:]
+                    prev_text_len = len(full_text)
+                    if delta:
+                        yield AgentChunkEvent.create(delta)
                     # Emit tool calls if present
                     if hasattr(message, "tool_calls") and message.tool_calls:
                         for tool_call in message.tool_calls:
@@ -287,17 +312,34 @@ async def _tts_stream(
         async for event in event_stream:
             # Pass through all events to downstream consumers
             yield event
+            # User finished speaking — interrupt TTS playback
+            # We use stt_output (final transcript) instead of stt_chunk (partials)
+            # to avoid false interrupts from echo / background noise on phone calls.
+            if event.type == "stt_output":
+                tts.interrupt()
+                buffer = []
+            # Agent starts responding — resume TTS
+            if event.type == "agent_chunk" and not buffer:
+                tts.resume()
             # Buffer agent text chunks, flush on sentence boundaries
             if event.type == "agent_chunk":
                 buffer.append(event.text)
                 text_so_far = "".join(buffer)
                 if any(text_so_far.rstrip().endswith(p) for p in (".", "!", "?", ":")):
+                    with tracer.start_as_current_span("tts") as span:
+                        span.set_attribute("fi.span.kind", FiSpanKindValues.TOOL)
+                        span.set_attribute("audio.transcript", text_so_far)
+                        span.set_attribute("tool.name", "text-to-speech")
                     await tts.send_text(text_so_far)
                     buffer = []
             # Flush any remaining text when agent finishes
             if event.type == "agent_end":
                 remaining = "".join(buffer).strip()
                 if remaining:
+                    with tracer.start_as_current_span("tts") as span:
+                        span.set_attribute("fi.span.kind", FiSpanKindValues.TOOL)
+                        span.set_attribute("audio.transcript", remaining)
+                        span.set_attribute("tool.name", "text-to-speech")
                     await tts.send_text(remaining)
                 buffer = []
 
@@ -311,11 +353,9 @@ async def _tts_stream(
         await tts.close()
 
 
-pipeline = (
-    RunnableGenerator(_stt_stream)  # Audio -> STT events
-    | RunnableGenerator(_agent_stream)  # STT events -> STT + Agent events
-    | RunnableGenerator(_tts_stream)  # STT + Agent events -> All events
-)
+def pipeline(audio_stream: AsyncIterator[bytes]) -> AsyncIterator[VoiceAgentEvent]:
+    """Chain STT → Agent → TTS as plain async generators (no RunnableSequence)."""
+    return _tts_stream(_agent_stream(_stt_stream(audio_stream)))
 
 
 @app.websocket("/ws")
@@ -331,20 +371,38 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_bytes()
             yield data
 
-    with (
-        using_session(session_id),
-        using_user(user_id),
-        using_prompt_template(
-            template=system_prompt,
-            label=PROMPT_TEMPLATE_LABEL,
-            version=PROMPT_TEMPLATE_VERSION,
-        ),
-    ):
-        output_stream = pipeline.atransform(websocket_audio_stream())
+    with tracer.start_as_current_span("voice-agent-session") as root_span:
+        root_span.set_attribute("fi.span.kind", FiSpanKindValues.AGENT)
+        with (
+            using_session(session_id),
+            using_user(user_id),
+            using_prompt_template(
+                template=system_prompt,
+                label=PROMPT_TEMPLATE_LABEL,
+                version=PROMPT_TEMPLATE_VERSION,
+            ),
+        ):
+            try:
+                output_stream = pipeline(websocket_audio_stream())
 
-        # Process all events from the pipeline, sending events back to the client
-        async for event in output_stream:
-            await websocket.send_json(event_to_dict(event))
+                async for event in output_stream:
+                    await websocket.send_json(event_to_dict(event))
+            except Exception as e:
+                print(f"[WS] Session ended: {e}")
+                root_span.set_attribute("session.end_reason", str(type(e).__name__))
+
+
+@app.post("/twiml")
+async def twiml_endpoint(request: Request):
+    """Return TwiML that tells Twilio to stream audio to our WebSocket."""
+    host = request.headers.get("host", "localhost")
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <Stream url="wss://{host}/ws/twilio" />
+    </Connect>
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
 
 
 @app.websocket("/ws/twilio")
@@ -355,46 +413,70 @@ async def twilio_websocket_endpoint(websocket: WebSocket):
     stream_sid = None
 
     async def twilio_audio_stream() -> AsyncIterator[bytes]:
-        """Decode Twilio mulaw base64 media into PCM bytes."""
+        """Decode Twilio mulaw base64 media into PCM bytes at 24kHz."""
         while True:
-            raw = await websocket.receive_text()
+            try:
+                raw = await websocket.receive_text()
+            except Exception as e:
+                print(f"[Twilio] WebSocket receive error: {e}")
+                return
             msg = json.loads(raw)
-            if msg.get("event") == "media":
+            event_type = msg.get("event")
+            if event_type == "media":
                 mulaw_bytes = base64.b64decode(msg["media"]["payload"])
-                pcm_bytes = audioop.ulaw2lin(mulaw_bytes, 2)
-                yield pcm_bytes
-            elif msg.get("event") == "start":
+                pcm_8k = audioop.ulaw2lin(mulaw_bytes, 2)
+                # Upsample 8kHz -> 24kHz for OpenAI Realtime API
+                pcm_24k = audioop.ratecv(pcm_8k, 2, 1, 8000, 24000, None)[0]
+                yield pcm_24k
+            elif event_type == "start":
                 nonlocal stream_sid
                 stream_sid = msg["start"].get("streamSid")
-            elif msg.get("event") == "stop":
+                print(f"[Twilio] Stream started: {stream_sid}")
+            elif event_type == "stop":
+                print("[Twilio] Stream stopped")
                 return
+            elif event_type == "connected":
+                print("[Twilio] Connected")
 
-    with (
-        using_session(session_id),
-        using_user("twilio-caller"),
-        using_prompt_template(
-            template=system_prompt,
-            label=PROMPT_TEMPLATE_LABEL,
-            version=PROMPT_TEMPLATE_VERSION,
-        ),
-    ):
-        output_stream = pipeline.atransform(twilio_audio_stream())
+    with tracer.start_as_current_span("voice-agent-session") as root_span:
+        root_span.set_attribute("fi.span.kind", FiSpanKindValues.AGENT)
+        with (
+            using_session(session_id),
+            using_user("twilio-caller"),
+            using_prompt_template(
+                template=system_prompt,
+                label=PROMPT_TEMPLATE_LABEL,
+                version=PROMPT_TEMPLATE_VERSION,
+            ),
+        ):
+            try:
+                output_stream = pipeline(twilio_audio_stream())
 
-        async for event in output_stream:
-            if event.type == "tts_chunk" and stream_sid:
-                # TTS outputs 24kHz PCM16 mono, Twilio expects 8kHz mulaw
-                pcm_8k = audioop.ratecv(event.audio, 2, 1, 24000, 8000, None)[0]
-                mulaw_bytes = audioop.lin2ulaw(pcm_8k, 2)
-                payload = base64.b64encode(mulaw_bytes).decode("ascii")
-                await websocket.send_text(json.dumps({
-                    "event": "media",
-                    "streamSid": stream_sid,
-                    "media": {"payload": payload},
-                }))
+                async for event in output_stream:
+                    # User finished speaking — clear Twilio's audio buffer
+                    if event.type == "stt_output" and stream_sid:
+                        await websocket.send_text(json.dumps({
+                            "event": "clear",
+                            "streamSid": stream_sid,
+                        }))
+                    if event.type == "tts_chunk" and stream_sid:
+                        # TTS outputs 24kHz PCM16 mono, Twilio expects 8kHz mulaw
+                        pcm_8k = audioop.ratecv(event.audio, 2, 1, 24000, 8000, None)[0]
+                        mulaw_bytes = audioop.lin2ulaw(pcm_8k, 2)
+                        payload = base64.b64encode(mulaw_bytes).decode("ascii")
+                        await websocket.send_text(json.dumps({
+                            "event": "media",
+                            "streamSid": stream_sid,
+                            "media": {"payload": payload},
+                        }))
+            except Exception as e:
+                print(f"[Twilio] Session ended: {e}")
+                root_span.set_attribute("session.end_reason", str(type(e).__name__))
 
 
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+if STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", port=8000, reload=True)
+    uvicorn.run("main:app", port=8081, reload=True)

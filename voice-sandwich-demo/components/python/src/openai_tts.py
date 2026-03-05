@@ -33,6 +33,7 @@ class OpenAITTS:
         self.model = model
         self._queue: asyncio.Queue[Optional[TTSChunkEvent]] = asyncio.Queue()
         self._close_signal = asyncio.Event()
+        self._interrupted = asyncio.Event()
 
     async def send_text(self, text: Optional[str]) -> None:
         if not text or not text.strip():
@@ -59,6 +60,8 @@ class OpenAITTS:
                 ) as response:
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes(chunk_size=4096):
+                        if self._interrupted.is_set():
+                            break
                         if chunk:
                             await self._queue.put(TTSChunkEvent.create(chunk))
         except Exception as e:
@@ -68,9 +71,24 @@ class OpenAITTS:
         while not self._close_signal.is_set():
             try:
                 event = await asyncio.wait_for(self._queue.get(), timeout=0.05)
-                yield event
+                if not self._interrupted.is_set():
+                    yield event
             except asyncio.TimeoutError:
                 continue
+
+    def interrupt(self) -> None:
+        """Clear queued audio and stop current TTS streaming."""
+        self._interrupted.set()
+        # Drain the queue
+        while not self._queue.empty():
+            try:
+                self._queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+
+    def resume(self) -> None:
+        """Allow TTS to produce audio again after an interruption."""
+        self._interrupted.clear()
 
     async def close(self) -> None:
         self._close_signal.set()
