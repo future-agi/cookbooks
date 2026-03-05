@@ -18,13 +18,18 @@ from fi_instrumentation.fi_types import ProjectType, FiSpanKindValues, SpanAttri
 from fi.prompt import Prompt
 from opentelemetry import trace
 from traceai_langchain import LangChainInstrumentor
+from traceai_guardrails import GuardrailsInstrumentor
+from guardrails import Guard
 
 trace_provider = register(
     project_type=ProjectType.OBSERVE,
     project_name="voice-sandwich-demo",
 )
 LangChainInstrumentor().instrument(tracer_provider=trace_provider)
+GuardrailsInstrumentor().instrument(tracer_provider=trace_provider)
 tracer = trace.get_tracer(__name__)
+
+guard = Guard()
 
 # Fetch system prompt from FutureAGI Prompt Workbench
 PROMPT_TEMPLATE_NAME = "sandwich-shop-assistant"
@@ -232,6 +237,13 @@ async def _agent_stream(
 
         # When we receive a final transcript, invoke the agent
         if event.type == "stt_output":
+            # Input guardrail: validate user input before prompting the LLM
+            input_guard_result = await asyncio.to_thread(
+                guard,
+                messages=[{"role": "user", "content": event.transcript}],
+                model="gpt-4o",
+            )
+
             # Stream the agent's response using LangChain's astream method.
             # stream_mode="messages" yields message chunks as they're generated.
             stream = agent.astream(
@@ -243,6 +255,7 @@ async def _agent_stream(
             # Iterate through the agent's streaming response. The stream yields
             # tuples of (message, metadata), but we only need the message.
             prev_text_len = 0
+            full_response_text = []
             async for message, metadata in stream:
                 # Emit agent chunks (AI messages)
                 if isinstance(message, AIMessage):
@@ -251,6 +264,7 @@ async def _agent_stream(
                     delta = full_text[prev_text_len:]
                     prev_text_len = len(full_text)
                     if delta:
+                        full_response_text.append(delta)
                         yield AgentChunkEvent.create(delta)
                     # Emit tool calls if present
                     if hasattr(message, "tool_calls") and message.tool_calls:
@@ -268,6 +282,18 @@ async def _agent_stream(
                         name=getattr(message, "name", "unknown"),
                         result=str(message.content) if message.content else "",
                     )
+
+            # Output guardrail: validate LLM response after generation
+            output_text = "".join(full_response_text)
+            if output_text.strip():
+                await asyncio.to_thread(
+                    guard,
+                    messages=[
+                        {"role": "user", "content": event.transcript},
+                        {"role": "assistant", "content": output_text},
+                    ],
+                    model="gpt-4o",
+                )
 
             # Signal that the agent has finished responding for this turn
             yield AgentEndEvent.create()
