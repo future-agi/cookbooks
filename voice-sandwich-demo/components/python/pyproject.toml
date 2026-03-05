@@ -4,13 +4,11 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.123.5",
-    "guardrails-core",
     "langchain",
     "langchain-aws",
     "langchain-core",
     "langgraph",
     "python-dotenv",
-    "traceAI-guardrails",
     "traceAI-langchain",
     "futureagi",
     "uvicorn>=0.38.0",

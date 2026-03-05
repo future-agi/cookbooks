@@ -15,21 +15,23 @@ load_dotenv()
 
 from fi_instrumentation import register, using_prompt_template, using_session, using_user
 from fi_instrumentation.fi_types import ProjectType, FiSpanKindValues, SpanAttributes
+from fi.evals import Protect
 from fi.prompt import Prompt
 from opentelemetry import trace
 from traceai_langchain import LangChainInstrumentor
-from traceai_guardrails import GuardrailsInstrumentor
-from guardrails import Guard
 
 trace_provider = register(
     project_type=ProjectType.OBSERVE,
     project_name="voice-sandwich-demo",
 )
 LangChainInstrumentor().instrument(tracer_provider=trace_provider)
-GuardrailsInstrumentor().instrument(tracer_provider=trace_provider)
 tracer = trace.get_tracer(__name__)
 
-guard = Guard()
+protector = Protect()
+protect_rules = [
+    {"metric": "content_moderation"},
+    {"metric": "data_privacy_compliance"},
+]
 
 # Fetch system prompt from FutureAGI Prompt Workbench
 PROMPT_TEMPLATE_NAME = "sandwich-shop-assistant"
@@ -238,11 +240,17 @@ async def _agent_stream(
         # When we receive a final transcript, invoke the agent
         if event.type == "stt_output":
             # Input guardrail: validate user input before prompting the LLM
-            input_guard_result = await asyncio.to_thread(
-                guard,
-                messages=[{"role": "user", "content": event.transcript}],
-                model="gpt-4o",
+            input_result = await asyncio.to_thread(
+                protector.protect,
+                inputs=event.transcript,
+                protect_rules=protect_rules,
+                reason=True,
             )
+
+            if input_result["status"] == "failed":
+                yield AgentChunkEvent.create(input_result["messages"])
+                yield AgentEndEvent.create()
+                continue
 
             # Stream the agent's response using LangChain's astream method.
             # stream_mode="messages" yields message chunks as they're generated.
@@ -287,12 +295,10 @@ async def _agent_stream(
             output_text = "".join(full_response_text)
             if output_text.strip():
                 await asyncio.to_thread(
-                    guard,
-                    messages=[
-                        {"role": "user", "content": event.transcript},
-                        {"role": "assistant", "content": output_text},
-                    ],
-                    model="gpt-4o",
+                    protector.protect,
+                    inputs=output_text,
+                    protect_rules=protect_rules,
+                    reason=True,
                 )
 
             # Signal that the agent has finished responding for this turn
