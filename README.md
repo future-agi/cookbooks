@@ -31,3 +31,7 @@ This example demonstrates a multi-agent orchestration system that leverages Lang
 
 ## 8. `rag-agent`
 This example demonstrates a Retrieval-Augmented Generation (RAG) system that enhances question-answering capabilities by breaking down complex questions into sub-questions, retrieving relevant documents, and generating comprehensive answers using OpenAI's language models. The project leverages LangChain, OpenTelemetry, and Chroma for document retrieval and semantic chunking.
+
+## 9. `agent_red_teaming`
+
+This example demonstrates red-teaming an agent with the FutureAGI guardrail pipeline. It fires adversarial inputs (prompt injection, jailbreak, secret exfiltration, PII extraction) at a simple support agent, screens every turn at input and output with the jailbreak, code-injection, and secrets scanners, and traces the run in FutureAGI Observe.
