@@ -4,8 +4,6 @@ Live workshop demo for an agentic RAG system where retrieval gets worse as the c
 
 Corpus: all 1,025 Pokémon from [PokéAPI](https://pokeapi.co), plus realistic re-crawl duplication and one stale type-chart document.
 
-- Run-of-show, expected numbers, and fallbacks: `RUNBOOK.md`
-- Design notes and measurement history: `CLAUDE.md`
 
 ## Setup
 
@@ -128,7 +126,7 @@ Open Future AGI integration items:
 3. **Hybrid + rerank**: dense + miniCOIL sparse prefetch, RRF fusion, and ColBERT rerank in one `query_points` call.
 4. **Freshness filter**: `is_current` removes the stale type-chart document that better ranking alone cannot beat.
 
-Expected numbers for every beat live in `RUNBOOK.md`; the committed run and score files under `data/` reproduce them.
+Run `run_golden.py --stage iterN` once per stage to produce your own run files under `data/`, then score them on the Future AGI dashboard (or with `score_runs.py`).
 
 Local FastEmbed models: `all-MiniLM-L6-v2`, `BAAI/bge-large-en-v1.5`, `Qdrant/minicoil-v1`, `colbert-ir/colbertv2.0`.
 
