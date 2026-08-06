@@ -1,0 +1,7 @@
+# Pokedex theme: light, high contrast, readable from across a room (never dark theme).
+[theme]
+base = "light"
+primaryColor = "#cc0000"
+backgroundColor = "#f7f3ea"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1a1a2e"

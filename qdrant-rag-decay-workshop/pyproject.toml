@@ -1,0 +1,33 @@
+[project]
+name = "qdrant-futureagi-rag-workshop"
+version = "0.1.0"
+description = "Qdrant x Future AGI agentic RAG workshop"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "qdrant-client[fastembed]>=1.18",
+    # traceAI-langchain (Future AGI's instrumentor) requires langchain<0.4, which rules
+    # out langchain 1.x and its create_agent API. Pin the whole stack to what it supports.
+    "langchain>=0.3.9,<0.4",
+    "langgraph>=0.2,<1.0",
+    "streamlit>=1.40",
+    "python-dotenv>=1.0",
+    "requests>=2.32",
+    "ipykernel>=6.29",
+    "matplotlib>=3.9",
+    # Future AGI: tracing (register + LangChain auto-instrumentation) and evals.
+    "ai-evaluation",
+    "fi-instrumentation-otel",
+    "traceAI-langchain",
+    # Default generator provider. Swap providers with GENERATOR_MODEL (see helpers/config.py)
+    # and install that provider's extra below.
+    "langchain-anthropic>=0.3,<0.4",
+]
+
+[project.optional-dependencies]
+# `uv sync --extra vertex` for GENERATOR_MODEL=google_vertexai:gemini-2.5-flash. Kept out
+# of the default install because it pulls the whole google-cloud-aiplatform tree.
+vertex = ["langchain-google-vertexai>=2.0,<3"]
+
+[tool.uv]
+# Pin an interpreter with mature wheels for onnxruntime/fastembed.
+python-preference = "managed"
