@@ -1,0 +1,41 @@
+version: 1.0.0
+name: rag_system
+description: Evaluation pipeline for RAG-based document Q&A systems
+metadata:
+  app_category: rag_system
+  risk_level: medium
+  domain_sensitivity: general
+  generated_by: autoeval
+execution:
+  mode: non_blocking
+  parallel_workers: 4
+  timeout_seconds: 30
+  fail_fast: false
+thresholds:
+  global_pass_rate: 0.8
+evaluations:
+- name: faithfulness
+  enabled: true
+  threshold: 0.9
+  weight: 1.5
+- name: groundedness
+  enabled: false
+  threshold: 0.8
+  weight: 1.5
+- name: answer_relevancy
+  enabled: true
+  threshold: 0.8
+  weight: 1.0
+scanners:
+- name: JailbreakScanner
+  enabled: true
+  threshold: 0.7
+  action: block
+- name: SecretsScanner
+  enabled: true
+  threshold: 0.7
+  action: flag
+- name: InvisibleCharScanner
+  enabled: true
+  threshold: 0.7
+  action: block
