@@ -11,6 +11,8 @@ automated evaluations using Future AGI.
 - Querying the index with natural-language questions
 - Automatic OpenTelemetry tracing of every LLM call and retrieval step via `traceAI-llamaindex`
 - Attaching evaluation tags (`CONTEXT_ADHERENCE`, `CONTEXT_RELEVANCE`, `COMPLETENESS`) so Future AGI scores each response automatically
+  - `CONTEXT_ADHERENCE` maps `context` → `raw.input` (the retrieved context passed to the LLM) and `output` → `raw.output`
+  - `CONTEXT_RELEVANCE` maps `input` → `raw.input` (the user query) and `context` → `raw.output` (what the model returned)
 - Viewing traces and scores in the [Future AGI dashboard](https://app.futureagi.com)
 
 ## Prerequisites

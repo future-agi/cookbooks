@@ -1,4 +1,4 @@
-from fi_instrumentation.fi_types import EvalName, EvalTagType, EvalSpanKind
+from fi_instrumentation.fi_types import EvalName, EvalTag, EvalTagType, EvalSpanKind
 
 list_of_eval_tags = [
     EvalTag(
