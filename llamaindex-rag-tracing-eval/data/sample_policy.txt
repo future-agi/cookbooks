@@ -1,0 +1,35 @@
+Acme Corp Remote Work Policy
+
+Effective Date: January 1, 2025
+
+1. Eligibility
+All full-time employees who have completed their 90-day onboarding period are
+eligible to work remotely up to 3 days per week. Part-time employees may work
+remotely with manager approval.
+
+2. Equipment
+The company will provide a laptop and necessary peripherals for remote work.
+Employees are responsible for maintaining a reliable internet connection with
+a minimum speed of 25 Mbps download and 10 Mbps upload.
+
+3. Core Hours
+All employees must be available and responsive between 10:00 AM and 3:00 PM
+in their local timezone, Monday through Friday. Meetings should be scheduled
+within these core hours whenever possible.
+
+4. Security
+Employees must use the company VPN when accessing internal systems remotely.
+Public Wi-Fi networks must not be used without VPN protection. All work must
+be performed on company-issued devices.
+
+5. Expenses
+The company provides a $50/month stipend to offset home office costs such as
+internet and electricity. This stipend is included in the monthly payroll.
+
+6. Performance
+Remote employees are evaluated on output and results, not hours logged.
+Managers will conduct bi-weekly check-ins with remote team members.
+
+7. Violations
+Failure to comply with this policy may result in loss of remote work
+privileges and disciplinary action up to and including termination.

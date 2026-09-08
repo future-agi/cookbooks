@@ -1,0 +1,7 @@
+fi-instrumentation-otel>=1.0.0
+traceAI-llamaindex>=0.1.9
+llama-index>=0.10.43
+llama-index-llms-openai>=0.1.0
+llama-index-embeddings-openai>=0.1.0
+python-dotenv>=1.0.0
+openai>=1.0.0
