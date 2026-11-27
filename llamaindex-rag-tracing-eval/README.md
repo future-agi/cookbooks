@@ -10,9 +10,10 @@ automated evaluations using Future AGI.
 - Loading a local text document into a LlamaIndex `VectorStoreIndex`
 - Querying the index with natural-language questions
 - Automatic OpenTelemetry tracing of every LLM call and retrieval step via `traceAI-llamaindex`
-- Attaching evaluation tags (`CONTEXT_ADHERENCE`, `CONTEXT_RELEVANCE`, `COMPLETENESS`) so Future AGI scores each response automatically
-  - `CONTEXT_ADHERENCE` maps `context` → `raw.input` (the retrieved context passed to the LLM) and `output` → `raw.output`
-  - `CONTEXT_RELEVANCE` maps `input` → `raw.input` (the user query) and `context` → `raw.output` (what the model returned)
+- Attaching evaluation tags (`CONTEXT_ADHERENCE`, `CONTEXT_RELEVANCE`, `COMPLETENESS`) so Future AGI scores each response automatically. Each built-in tag sets `model=ModelChoices.TURING_LARGE` (required as of `fi-instrumentation-otel` 1.3.1) and maps eval inputs to the `input.value` / `output.value` attributes that `traceAI-llamaindex` emits:
+  - `CONTEXT_ADHERENCE` runs on the **LLM** span: `context` → `input.value` (the prompt sent to the model, which contains the retrieved chunks) and `output` → `output.value` (the model's answer)
+  - `CONTEXT_RELEVANCE` runs on the **retriever** span: `input` → `input.value` (the user query) and `context` → `output.value` (the retrieved chunks)
+  - `COMPLETENESS` runs on the **LLM** span: `input` → `input.value` (the prompt) and `output` → `output.value` (the model's answer)
 - Viewing traces and scores in the [Future AGI dashboard](https://app.futureagi.com)
 
 ## Prerequisites

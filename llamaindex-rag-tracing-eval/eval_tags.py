@@ -1,4 +1,10 @@
-from fi_instrumentation.fi_types import EvalName, EvalTag, EvalTagType, EvalSpanKind
+from fi_instrumentation.fi_types import (
+    EvalName,
+    EvalSpanKind,
+    EvalTag,
+    EvalTagType,
+    ModelChoices,
+)
 
 list_of_eval_tags = [
     EvalTag(
@@ -7,21 +13,23 @@ list_of_eval_tags = [
         type=EvalTagType.OBSERVATION_SPAN,
         config={},
         mapping={
-            "context": "raw.input",
-            "output": "raw.output",
+            "context": "input.value",
+            "output": "output.value",
         },
         custom_eval_name="Context Adherence",
+        model=ModelChoices.TURING_LARGE,
     ),
     EvalTag(
         eval_name=EvalName.CONTEXT_RELEVANCE,
-        value=EvalSpanKind.LLM,
+        value=EvalSpanKind.RETRIEVER,
         type=EvalTagType.OBSERVATION_SPAN,
         config={},
         mapping={
-            "input": "raw.input",
-            "context": "raw.output",
+            "input": "input.value",
+            "context": "output.value",
         },
         custom_eval_name="Context Relevance",
+        model=ModelChoices.TURING_LARGE,
     ),
     EvalTag(
         eval_name=EvalName.COMPLETENESS,
@@ -29,9 +37,10 @@ list_of_eval_tags = [
         type=EvalTagType.OBSERVATION_SPAN,
         config={},
         mapping={
-            "input": "raw.input",
-            "output": "raw.output",
+            "input": "input.value",
+            "output": "output.value",
         },
         custom_eval_name="Completeness",
+        model=ModelChoices.TURING_LARGE,
     ),
 ]
