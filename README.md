@@ -35,3 +35,7 @@ This example demonstrates a Retrieval-Augmented Generation (RAG) system that enh
 ## 9. `qdrant-rag-decay-workshop`
 
 This example is the full "Why Did My RAG Agent Get Worse? — A Live Autopsy" workshop (Future AGI x Qdrant): an agentic Pokedex RAG system that decays as its corpus grows from 151 to 1,025 species, then recovers through four measured fixes — dedup, embedding migration via named vectors, hybrid retrieval with ColBERT reranking, and an `is_current` payload filter that closes a stale-document failure no ranking fix can touch. Every stage's 37-query golden run is traced to its own Future AGI project and scored with five trace evals plus a ground-truth answer-correctness judge; answer correctness climbs 0.57 → 0.92 across the arc. Includes the Streamlit app with a retrieval panel, the live-fix notebook, the webinar runbook, and committed run data so every quoted number reproduces.
+
+## 10. `llm-spend-watchdog`
+
+A smolagents agent that reads LLM usage every hour from gateway request logs and two provider usage APIs, checks it against budgets kept in a sheet, and drafts a Slack alert when spend crosses 50%, 80% or 100% of a budget, when a budget is on course to be passed, or when a prepaid balance is about to run out. Each alert lists the top 5 keys, and a weekly digest goes out on Mondays. Nothing is posted until a person approves it. Runs on a synthetic month (`make demo`), is traced with traceAI, and is scored with Future AGI evals over 24 synthetic months.
