@@ -1,0 +1,6 @@
+smolagents==1.26.0
+litellm==1.80.0
+traceai-smolagents==0.1.8
+fi-instrumentation-otel==1.5.1
+ai-evaluation==1.1.0
+python-dotenv==1.2.4

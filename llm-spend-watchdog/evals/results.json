@@ -1,0 +1,538 @@
+{
+  "summary": {
+    "cases": 24,
+    "alerts": 422,
+    "false_alerts": 2,
+    "alert_precision": 0.9953,
+    "events": 33,
+    "caught_before": 33,
+    "event_recall": 1.0,
+    "projection_similarity": 0.9708,
+    "runout_similarity": 0.9629,
+    "breach_eta_similarity": 0.8064,
+    "no_key_leak": 1.0,
+    "numbers_grounded": 1.0,
+    "written_by": [
+      "template"
+    ]
+  },
+  "cases": [
+    {
+      "case": "sample-month",
+      "alerts": 25,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 4,
+      "caught_before": 4,
+      "recall": 1.0,
+      "min_lead_hours": 33.0,
+      "projection_similarity": 0.9749,
+      "runout_similarity": 0.9884,
+      "breach_eta_similarity": 0.9331,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "runaway-early-oa-evals",
+      "alerts": 22,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 3,
+      "caught_before": 3,
+      "recall": 1.0,
+      "min_lead_hours": 86.0,
+      "projection_similarity": 0.9724,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.956,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "runaway-oa-search-day8",
+      "alerts": 22,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 3,
+      "caught_before": 3,
+      "recall": 1.0,
+      "min_lead_hours": 52.0,
+      "projection_similarity": 0.9791,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.8767,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "runaway-an-sales-day12",
+      "alerts": 22,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 3,
+      "caught_before": 3,
+      "recall": 1.0,
+      "min_lead_hours": 97.0,
+      "projection_similarity": 0.9613,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.9409,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "runaway-gm-voice-day22",
+      "alerts": 23,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 3,
+      "caught_before": 3,
+      "recall": 1.0,
+      "min_lead_hours": 15.0,
+      "projection_similarity": 0.9643,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.964,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "runaway-late-an-coding-day26",
+      "alerts": 20,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 2,
+      "caught_before": 2,
+      "recall": 1.0,
+      "min_lead_hours": 19.0,
+      "projection_similarity": 0.9682,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.8832,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "runaway-stops-after-30h",
+      "alerts": 20,
+      "false_alerts": 2,
+      "precision": 0.9,
+      "events": 1,
+      "caught_before": 1,
+      "recall": 1.0,
+      "min_lead_hours": 309.0,
+      "projection_similarity": 0.9697,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.1304,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [
+        {
+          "at": "2026-11-14 16:00 UTC",
+          "id": "projected_breach|provider:openai|1.0",
+          "correct": false,
+          "why": "budget not passed by month end"
+        },
+        {
+          "at": "2026-11-14 21:00 UTC",
+          "id": "projected_breach|org:all|1.0",
+          "correct": false,
+          "why": "budget not passed by month end"
+        }
+      ],
+      "missed": []
+    },
+    {
+      "case": "two-runaways",
+      "alerts": 28,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 5,
+      "caught_before": 5,
+      "recall": 1.0,
+      "min_lead_hours": 34.0,
+      "projection_similarity": 0.971,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.9387,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "runaway-and-balance-day18",
+      "alerts": 24,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 4,
+      "caught_before": 4,
+      "recall": 1.0,
+      "min_lead_hours": 62.0,
+      "projection_similarity": 0.9714,
+      "runout_similarity": 0.9556,
+      "breach_eta_similarity": 0.8925,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "burst-3h-fixed",
+      "alerts": 14,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9762,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "burst-2h-fixed",
+      "alerts": 14,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.965,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "burst-4h-fixed",
+      "alerts": 13,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9815,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "spike-40-an-coding",
+      "alerts": 13,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9643,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "spike-60-oa-search",
+      "alerts": 13,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9762,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "backfill-2x25-gm-batch",
+      "alerts": 17,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 1,
+      "caught_before": 1,
+      "recall": 1.0,
+      "min_lead_hours": 309.0,
+      "projection_similarity": 0.9775,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.6641,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "balance-zero-day12",
+      "alerts": 15,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 1,
+      "caught_before": 1,
+      "recall": 1.0,
+      "min_lead_hours": 67.0,
+      "projection_similarity": 0.9687,
+      "runout_similarity": 0.981,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "balance-zero-day20",
+      "alerts": 15,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 1,
+      "caught_before": 1,
+      "recall": 1.0,
+      "min_lead_hours": 68.0,
+      "projection_similarity": 0.9695,
+      "runout_similarity": 0.9756,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "balance-zero-day29",
+      "alerts": 15,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 1,
+      "caught_before": 1,
+      "recall": 1.0,
+      "min_lead_hours": 73.0,
+      "projection_similarity": 0.9726,
+      "runout_similarity": 0.9137,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "growth-an-docs-qa-6pct",
+      "alerts": 17,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 1,
+      "caught_before": 1,
+      "recall": 1.0,
+      "min_lead_hours": 226.0,
+      "projection_similarity": 0.967,
+      "runout_similarity": null,
+      "breach_eta_similarity": 0.6907,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "growth-gm-extract-4pct",
+      "alerts": 16,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9678,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "growth-oa-search-1pct",
+      "alerts": 14,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9688,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "quiet-month-a",
+      "alerts": 13,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9678,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "quiet-month-b",
+      "alerts": 13,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9714,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    },
+    {
+      "case": "quiet-month-c",
+      "alerts": 14,
+      "false_alerts": 0,
+      "precision": 1.0,
+      "events": 0,
+      "caught_before": 0,
+      "recall": 1.0,
+      "min_lead_hours": null,
+      "projection_similarity": 0.9732,
+      "runout_similarity": null,
+      "breach_eta_similarity": null,
+      "no_key_leak": 1.0,
+      "numbers_grounded": 1.0,
+      "written_by": [
+        "template"
+      ],
+      "cloud": {},
+      "wrong": [],
+      "missed": []
+    }
+  ]
+}
